@@ -35,7 +35,7 @@ public class Day01 {
     }
 
     public static void main(String... args) throws Exception {
-        var path = Paths.get("01.txt");
+        var path = Paths.get("sample01.txt");
         Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8);
         int total = lines.reduce(0, (subtotal, element) -> subtotal + getLineValue(element, TOKENS_1), Integer::sum);
         lines.close();
