@@ -41,23 +41,24 @@ public class Day03 {
         var l = 0;
         var linesSize = lines.size();
         while (l < linesSize) {
+            //System.out.println(">>> Processing line " + (l + 1));
             var symbols = allSymbols.get(l);
+            markParts(l, symbols, allNumbers.get(l));
             if (l == 0) {
                 // First line
-                markParts(symbols, allNumbers.get(1));
+                markParts(l, symbols, allNumbers.get(1));
             } else if (l == linesSize - 1) {
                 // Last line
-                markParts(symbols, allNumbers.get(allNumbers.size() - 2));
+                markParts(l, symbols, allNumbers.get(linesSize - 2));
             } else {
                 // "Middle" line
-                markParts(symbols, allNumbers.get(l));
-                markParts(symbols, allNumbers.get(l - 1));
-                markParts(symbols, allNumbers.get(l + 1));
+                markParts(l, symbols, allNumbers.get(l - 1));
+                markParts(l, symbols, allNumbers.get(l + 1));
             }
             l++;
         }
 
-        int total = 0;
+        var total = 0;
         for (var i = 0; i < allNumbers.size(); i++) {
             var numbers = allNumbers.get(i);
             total += numbers.stream().reduce(0, (subtotal, number) -> subtotal + (number.isPart ? number.value : 0), Integer::sum);
@@ -65,18 +66,22 @@ public class Day03 {
         System.out.println("Parts total: " + total);
     }
 
-    static void markParts(List<Symbol> symbols, List<Number> numbers) {
+    static void markParts(int l, List<Symbol> symbols, List<Number> numbers) {
         // If no symbols, or no numbers, or all numbers are already known parts, skip
         if (symbols.isEmpty() || numbers.isEmpty() || numbers.stream().allMatch(number -> number.isPart)) {
+            //System.out.println("Skipped line " + (l + 1) + " with no symbols, no numbers, or all already known parts");
             return;
         }
+        //System.out.println("Analizing line " + (l + 1));
         for (var symbol: symbols) {
             for (var number: numbers) {
-                if (number.start - 1 <= symbol.column && symbol.column <= number.end + 1) {
-                number.isPart = true;
+                if (!number.isPart && number.start - 1 <= symbol.column && symbol.column <= number.end + 1) {
+                    number.isPart = true;
                 }
             }
         }
+        //System.out.println("Symbols: " + symbols);
+        //System.out.println("Numbers: " + numbers);
     }
 
     // ......726...811...........................+..91..980..*........................$..........*.......639..................193.%............403.
