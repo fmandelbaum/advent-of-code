@@ -27,161 +27,124 @@ public class Day03 {
         try (var stream = Files.lines(Paths.get("03.txt"), StandardCharsets.UTF_8)) {
             lines = stream.collect(Collectors.toList());
         }
-        var n = lines.size();
-        // Do first line...
-        var line1 = lines.get(0);
-        var total = getLineValue(line1);
-        total += getPartsLineValue(line1, lines.get(1));
-        // ... do last line...
-        var lineN = lines.get(n - 1);
-        var value = getLineValue(lineN);
-        if (value == 0) {
-            // check diagonals
-            value = getPartsLineValue(lineN, lines.get(n - 2));
+        var allNumbers = new ArrayList<List<Number>>();
+        var allSymbols = new ArrayList<List<Symbol>>();
+        for (var line : lines) {
+            var numbers = new ArrayList<Number>();
+            var symbols = new ArrayList<Symbol>();
+            parseLine(line, numbers, symbols);
+            allNumbers.add(numbers);
+            allSymbols.add(symbols);
         }
-        total += value;
-        // ... do lines "in between"...
-        for (var i = 1; i < n - 1; i++) {
-            var line = lines.get(i);
-            value = getLineValue(line);
-            if (value == 0) {
-                // Check diagonals
-                if (i < n - 2) {
-                    total += getPartsLineValue(line, lines.get(i - 1));
-                    total += getPartsLineValue(line, lines.get(i + 1));
-                } else {
-                    total += getPartsLineValue(line, lines.get(i - 1));
-                }
+
+        // Mark parts
+        var l = 0;
+        var linesSize = lines.size();
+        while (l < linesSize) {
+            var symbols = allSymbols.get(l);
+            if (l == 0) {
+                // First line
+                markParts(symbols, allNumbers.get(1));
+            } else if (l == linesSize - 1) {
+                // Last line
+                markParts(symbols, allNumbers.get(allNumbers.size() - 2));
             } else {
-                total += value;
+                // "Middle" line
+                markParts(symbols, allNumbers.get(l));
+                markParts(symbols, allNumbers.get(l - 1));
+                markParts(symbols, allNumbers.get(l + 1));
             }
+            l++;
         }
-        System.out.println("Total of Part Numbers: " + total);
+
+        int total = 0;
+        for (var i = 0; i < allNumbers.size(); i++) {
+            var numbers = allNumbers.get(i);
+            total += numbers.stream().reduce(0, (subtotal, number) -> subtotal + (number.isPart ? number.value : 0), Integer::sum);
+        }
+        System.out.println("Parts total: " + total);
     }
 
-    // [447 (4,6), -1 (18,18), 342 (30,32), -1 (37,37), -1 (43,43), -1 (52,52), 938 (55,57), 238 (64,66), 327 (72,74), -1 (89,89), 152 (90,92), -1 (99,99), -1 (103,103), -1 (123,123), 472 (126,128), 153 (130,132)]
-    // [152 (13,15), -1 (16,16), -1 (29,29), 792 (36,38), 334 (42,44), 741 (51,53), 570 (78,80), -1 (81,81), 335 (86,88), 137 (103,105), 338 (116,118), -1 (129,129), -1 (136,136)]
-    private static int getPartsLineValue(String line1, String line2) {
-        // First we process the line itself to check for adjacent symbols...
-        var value = getLineValue(line1);
-        // ... then we process the line against the 2nd one to look for diagonal symbols
-        var list1 = parseLine(line1);
-        list1.removeIf(d -> d.value == -1); // Removes symbols, leaving only potential parts
-        var list2 = parseLine(line2);
-        for (var data : list1) {
-            if (isPart(data, list2)) {
-                value += data.value;
-            }
+    static void markParts(List<Symbol> symbols, List<Number> numbers) {
+        // If no symbols, or no numbers, or all numbers are already known parts, skip
+        if (symbols.isEmpty() || numbers.isEmpty() || numbers.stream().allMatch(number -> number.isPart)) {
+            return;
         }
-        return value;
-    }
-
-    // .....*....*........./227..-113........@...825/.....348...881......603...........%....793...=............235*..............472.........82.941
-    private static int getLineValue(String line) {
-        var total = 0;
-        var i = 0;
-        var sb = new StringBuilder();
-        var seenSymbol = false;
-        while (i < line.length()) {
-            var c = line.charAt(i);
-            if (c != '.') {
-                if (NUMBERS.contains(c)) {
-                    sb.append(c);
-                } else {
-                    if (!sb.isEmpty()) {
-                        // had a number followed by a symbol, found a part
-                        total += Integer.parseInt(sb.toString());
-                        seenSymbol = false;
-                        sb = new StringBuilder();
-                    } else {
-                        // Flag that symbol has been seen to check if we have enough info to consider another part
-                        seenSymbol = true;
-                    }
+        for (var symbol: symbols) {
+            for (var number: numbers) {
+                if (number.start - 1 <= symbol.column && symbol.column <= number.end + 1) {
+                number.isPart = true;
                 }
-                i++; // Move on to next char
-            } else {
-                if (seenSymbol && !sb.isEmpty()) {
-                    // symbol followed by a number, found a part
-                    total += Integer.parseInt(sb.toString());
-                }
-                sb = new StringBuilder();
-                seenSymbol = false; // Ignore symbol not adjacent to number
-                i++; // Move on to next char
             }
         }
-        return total;
-    }
-
-    private static boolean isPart(Data data, List<Data> dataList) {
-        var isPart = false;
-        dataList.removeIf(d -> d.value != -1); // Remove parts, leaving only symbols
-        // We do not need to check out of bounds here...
-        var i1 = data.idxStart - 1;
-        var i2 = data.idxEnd + 1;
-        for (var i = 0; !isPart && i < dataList.size(); i++) {
-            var symbol = dataList.get(i);
-            isPart = symbol.idxStart >= i1 && symbol.idxStart <= i2;
-        }
-        return isPart;
     }
 
     // ......726...811...........................+..91..980..*........................$..........*.......639..................193.%............403.
     // 952.........................................................793......583..........623............11........730............50.116.........446
     // .....*....*........./227..-113........@...825/.....348...881......603...........%....793...=............235*..............472.........82.941
-    private static List<Data> parseLine(String line) {
-        var dataList = new ArrayList<Data>();
+    static void parseLine(String line, List<Number> numbers, List<Symbol> symbols) {
         var i = 0;
-        while (i < line.length()) {
-            var c = line.charAt(i);
-            if (c != '.') {
-                var data = parseItem(line, i);
-                dataList.add(data);
-                i = data.idxEnd + 1;
-            } else {
-                i++;
-            }
-        }
-        return dataList;
-    }
-
-    private static Data parseItem(String line, int i) {
-        var data = new Data();
-        data.idxStart = i;
         var sb = new StringBuilder();
+        var number = new Number();
         while (i < line.length()) {
             var c = line.charAt(i);
             if (c == '.') {
-                break; // Finished parsing "interesting" item, stop
-            } else {
-                if (NUMBERS.contains(c)) {
-                    sb.append(c);
-                    i++; // Keep going..
-                } else {
-                    // Hit a symbol, if we moved only one char, return, else stop
-                    if (i == data.idxStart) {
-                        data.value = -1;
-                        data.idxEnd = i;
-                        return data;
-                    } else {
-                        break; // Ugly (two breaks in the while loop), but working
-                    }
+                if (!sb.isEmpty()) {
+                    number.end = i - 1;
+                    number.value = Integer.parseInt(sb.toString());
+                    numbers.add(number);
+                    sb = new StringBuilder();
+                    number = new Number();
                 }
+                i++;
+                continue;
+            }
+            if (NUMBERS.contains(c)) {
+                if (sb.isEmpty()) {
+                    number.start = i;
+                }
+                sb.append(c);
+                i++;
+            } else {
+                var symbol = new Symbol(i, c);
+                symbols.add(symbol);
+                if (!sb.isEmpty()) {
+                    number.end = i - 1;
+                    number.value = Integer.parseInt(sb.toString());
+                    number.isPart = true; // We know the number is a part, because it's adjacent to the symbol
+                    numbers.add(number);
+                    sb = new StringBuilder();
+                    number = new Number();
+                }
+                i++;
             }
         }
-        data.idxEnd = i - 1;
-        var s = sb.toString(); // s is a number represented as a String
-        data.value = Integer.parseInt(s);
-        return data;
     }
 
-    static class Data {
-        int idxStart;
-        int idxEnd;
-        int value; // -1 for symbols, the number for numbers
+    static class Number {
+        int start;
+        int end;
+        int value;
+        boolean isPart = false;
 
         @Override
         public String toString() {
-            return value + " (" + idxStart + "," + idxEnd + ")";
+            return value + " (" + start + "," + end + ") isPart: " + isPart;
+        }
+    }
+
+    static class Symbol {
+        int column;
+        char value;
+
+        public Symbol(int column, char value) {
+            this.column = column;
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return value + " (" + column + ")";
         }
     }
 }
